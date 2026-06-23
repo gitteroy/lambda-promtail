@@ -1,4 +1,48 @@
-# lambda-promtail
+# lambda-promtail (gitteroy fork)
+
+> **Why this fork exists:** carries a one-line fix to `pkg/main.go::applyRelabelConfigs` — calls `builder.Sort()` before `builder.Labels()` so `relabel.Process` receives sorted input. Without this, ~40-50% of streams arrive at Loki missing renamed labels because `prommodel.ScratchBuilder.Labels()` returns labels in Go-map iteration order (random) and `relabel.Process` is order-sensitive.
+>
+> See [`pkg/relabel_apply_test.go`](pkg/relabel_apply_test.go) for a regression test that demonstrates the bug (1000 iterations, fails without `Sort()`, passes with it).
+
+## Releases
+
+This fork uses `.github/workflows/fork-release.yml` — pushing a tag matching `v*-sortfix.*` (e.g. `v1.0.0-sortfix.2`) triggers an x86_64 build, packages a Lambda-ready zip with a `bootstrap` binary at the root, and creates a GitHub release with the zip + sha256 attached.
+
+The upstream `.github/workflows/release.yml` is disabled in this fork because it pushes to grafanalabs S3 buckets we don't have credentials for.
+
+### Cutting a new release
+
+```bash
+# 1. Make code changes
+git commit -S -m "fix(...): description"
+
+# 2. Tag with next sortfix number
+git tag -s v1.0.0-sortfix.2 -m "v1.0.0 + sortfix.2"
+git push origin main v1.0.0-sortfix.2
+
+# 3. Wait for the workflow to finish — the GitHub release is created automatically.
+```
+
+### Rebasing onto a new upstream release
+
+When `grafana/lambda-promtail` releases `vX.Y.Z`:
+
+```bash
+git fetch upstream
+git rebase vX.Y.Z   # carries the Sort patch + tests forward
+git tag -s vX.Y.Z-sortfix.1 -m "vX.Y.Z + ScratchBuilder.Sort fix"
+git push origin main vX.Y.Z-sortfix.1
+```
+
+If upstream eventually merges the Sort fix (or releases a version that has it), retire this fork by tagging the unmodified upstream release without the `-sortfix` suffix and updating consumers' `var.lambda_promtail_version`.
+
+## Consumer
+
+This fork is consumed by the [observability platform](https://github.com/gitteroy/observability) — see its `tools/sync-lambda-promtail.sh` and `docs/adr/0020-aws-infra-logs-via-lambda-promtail.md`.
+
+---
+
+# lambda-promtail (upstream README)
 
 This is a sample deployment for lambda-promtail - Below is a brief explanation of what we have generated for you:
 
