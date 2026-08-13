@@ -164,9 +164,18 @@ func (b *batch) resetBatch() {
 }
 
 func (c *promtailClient) sendToPromtail(ctx context.Context, b *batch) error {
-	buf, _, err := b.encode()
+	buf, entriesCount, err := b.encode()
 	if err != nil {
 		return err
+	}
+
+	// Skip empty batches. A large multi-record source (e.g. CloudTrail) whose total
+	// size is a clean multiple of batchSize flushes fully mid-stream, leaving the
+	// final batch empty. Sending an empty PushRequest makes Loki return
+	// "422: at least one valid stream is required for ingestion", which is
+	// non-retryable and sends the whole SQS message to the DLQ. Nothing to send = success.
+	if entriesCount == 0 {
+		return nil
 	}
 
 	backoff := backoff.New(ctx, *c.config.backoff)
