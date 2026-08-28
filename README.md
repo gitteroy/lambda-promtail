@@ -2,7 +2,8 @@
 
 > **Why this fork exists:** carries a one-line fix to `pkg/main.go::applyRelabelConfigs` — calls `builder.Sort()` before `builder.Labels()` so `relabel.Process` receives sorted input. Without this, ~40-50% of streams arrive at Loki missing renamed labels because `prommodel.ScratchBuilder.Labels()` returns labels in Go-map iteration order (random) and `relabel.Process` is order-sensitive.
 >
-> See [`pkg/relabel_apply_test.go`](pkg/relabel_apply_test.go) for a regression test that demonstrates the bug (1000 iterations, fails without `Sort()`, passes with it).
+> **Full explanation with before/after diff, our affected rules, and the proof:** [`docs/WHY-THIS-FORK.md`](docs/WHY-THIS-FORK.md).
+> The regression test that demonstrates the bug (1000 iterations, fails without `Sort()`, passes with it) is [`pkg/relabel_apply_test.go`](pkg/relabel_apply_test.go).
 
 ## Releases
 
